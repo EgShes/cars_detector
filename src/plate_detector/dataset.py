@@ -1,7 +1,8 @@
 import os.path as osp
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 from xml.etree import cElementTree
 
+import albumentations
 import matplotlib.pyplot as plt
 import torch
 from torch.utils.data import Dataset
@@ -9,7 +10,7 @@ from torch.utils.data import Dataset
 
 class PlatesDetectionDataset(Dataset):
 
-    def __init__(self, data_path: str, set_type: str):
+    def __init__(self, data_path: str, set_type: str, transforms: Optional[albumentations.core.composition.Compose]):
 
         assert set_type in ['train', 'val', 'test'], 'set type must be one of ["train", "val", "test"]'
 
@@ -19,6 +20,8 @@ class PlatesDetectionDataset(Dataset):
         self.bboxes = [
             self._read_bboxes_data(osp.join(self.data_path, 'Annotations', f'{name}.xml'))  for name in self.file_names
         ]
+        self.transforms = transforms
+        self.normalize = albumentations.Normalize()
 
     def __len__(self):
         return len(self.file_names)
@@ -28,14 +31,26 @@ class PlatesDetectionDataset(Dataset):
         image = plt.imread(osp.join(self.data_path, 'Images', f'{name}.jpg'))
         labels = [1 for _ in range(len(bboxes))]
 
+        if self.transforms:
+            auged = self.transforms(image=image, bboxes=bboxes)
+            image, bboxes = auged['image'], auged['bboxes']
+
+        image = self.normalize(image=image)['image']
+
+        image = torch.FloatTensor(image).permute(2, 0, 1)
+        bboxes = torch.FloatTensor(bboxes)
+        labels = torch.FloatTensor(labels)
+
         target = {'boxes': bboxes, 'labels': labels}
 
         return image, target
 
     def _read_bboxes_data(self, xml_path: str) -> List[Tuple[int, int, int, int]]:
         xml = cElementTree.parse(xml_path)
+        height, width = int(xml.getiterator('height')[0].text), int(xml.getiterator('width')[0].text)
         coords = []
         for bbox_iterator in xml.getiterator('bndbox'):
-            # x0, y0, x1, y1
-            coords.append(tuple(int(coord.text) for coord in bbox_iterator))
+            x0, y0, x1, y1 = [float(coord.text) for coord in bbox_iterator]
+            x0, y0, x1, y1 = x0 / width, y0 / height, x1 / width, y1 / height
+            coords.append((x0, y0, x1, y1))
         return coords
