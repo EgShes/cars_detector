@@ -1,0 +1,20 @@
+hydra:
+    run:
+        dir: .
+# general
+batch_size: 8
+num_workers: 6
+num_epochs: 200
+device: cuda:0
+save_path: models
+experiment_name: test
+seed: 21
+test_run: false
+# data
+data_path: PATH_HERE
+# training
+early_stopping: 13
+learning_rate: 3e-3
+weight_decay: 0.
+lr_factor: 0.5
+lr_patience: 5
