@@ -1,5 +1,5 @@
 import os.path as osp
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Any, Dict
 from xml.etree import cElementTree
 
 import albumentations
@@ -39,7 +39,7 @@ class PlatesDetectionDataset(Dataset):
 
         image = torch.FloatTensor(image).permute(2, 0, 1)
         bboxes = torch.FloatTensor(bboxes)
-        labels = torch.FloatTensor(labels)
+        labels = torch.LongTensor(labels)
 
         target = {'boxes': bboxes, 'labels': labels}
 
@@ -54,3 +54,10 @@ class PlatesDetectionDataset(Dataset):
             x0, y0, x1, y1 = x0 / width, y0 / height, x1 / width, y1 / height
             coords.append((x0, y0, x1, y1))
         return coords
+
+    @staticmethod
+    def custom_collate(batch: List[Any]) -> Tuple[torch.Tensor, Dict[str, List[Any]]]:
+
+        images, targets = zip(*batch)
+
+        return images, targets

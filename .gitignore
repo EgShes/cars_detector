@@ -1,5 +1,11 @@
 .vscode/
+.hydra/
+.ipynb_checkpoints
 
 **/__pycache__
 
+models/
 notebooks/
+runs/
+
+**.log
