@@ -15,15 +15,10 @@ def fix_seeds(seed):
     torch.backends.cudnn.deterministic = True
 
 
-def write2tensorboard(train_metrics, val_metrics, writer, epoch: int = 0):
-    for key in train_metrics:
-        train_val, val_val = train_metrics[key], val_metrics[key]
-    writer.add_scalar(f'{key}/{key}_train', train_val, epoch)
-    writer.add_scalar(f'{key}/{key}_val', val_val, epoch)
-
-
-def write2tensorboard_test(test_metrics, writer, epoch: int = 0):
-    for key, val in test_metrics.items():
-        writer.add_scalar(f'{key}/{key}_test', val, epoch)
-    # to let the writer write the metrics
-    sleep(10.)
+def resnet_freeze(model, trainable_layers: int) -> None:
+    layers_to_train = ['layer4', 'layer3', 'layer2', 'layer1', 'conv1'][:trainable_layers]
+    for name, param in model.named_parameters():
+        if all([not name.startswith(layer) for layer in layers_to_train]):
+            param.requires_grad_(False)
+        else:
+            param.requires_grad_(True)

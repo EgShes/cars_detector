@@ -1,2 +1,2 @@
-from .utils import fix_seeds, write2tensorboard
+from .utils import fix_seeds, resnet_freeze
 from .optimizers import RAdam

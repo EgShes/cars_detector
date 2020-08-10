@@ -17,7 +17,7 @@ class PlatesDetectionDataset(Dataset):
         self.data_path = data_path
         with open(osp.join(self.data_path, 'ImageSets', f'{set_type}.txt'), 'r') as f:
             self.file_names = [line.strip() for line in f]
-        self.bboxes = [
+        self.bboxes = [ 
             self._read_bboxes_data(osp.join(self.data_path, 'Annotations', f'{name}.xml'))  for name in self.file_names
         ]
         self.transforms = transforms
@@ -35,9 +35,9 @@ class PlatesDetectionDataset(Dataset):
             auged = self.transforms(image=image, bboxes=bboxes)
             image, bboxes = auged['image'], auged['bboxes']
 
-        image = self.normalize(image=image)['image']
+        image = image / 255.
 
-        image = torch.FloatTensor(image).permute(2, 0, 1)
+        image = torch.FloatTensor(image.copy()).permute(2, 0, 1)
         bboxes = torch.FloatTensor(bboxes)
         labels = torch.LongTensor(labels)
 
@@ -51,7 +51,6 @@ class PlatesDetectionDataset(Dataset):
         coords = []
         for bbox_iterator in xml.getiterator('bndbox'):
             x0, y0, x1, y1 = [float(coord.text) for coord in bbox_iterator]
-            x0, y0, x1, y1 = x0 / width, y0 / height, x1 / width, y1 / height
             coords.append((x0, y0, x1, y1))
         return coords
 
