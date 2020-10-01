@@ -8,13 +8,13 @@ import torch.nn.functional as F
 
 # This function is from https://github.com/kuangliu/pytorch-ssd.
 def calc_iou_tensor(box1, box2):
-    """ Calculation of IoU based on two boxes tensor,
-        Reference to https://github.com/kuangliu/pytorch-src
-        input:
-            box1 (N, 4)
-            box2 (M, 4)
-        output:
-            IoU (N, M)
+    """Calculation of IoU based on two boxes tensor,
+    Reference to https://github.com/kuangliu/pytorch-src
+    input:
+        box1 (N, 4)
+        box2 (M, 4)
+    output:
+        IoU (N, M)
     """
     N = box1.size(0)
     M = box2.size(0)
@@ -24,46 +24,46 @@ def calc_iou_tensor(box1, box2):
 
     # Left Top & Right Bottom
     lt = torch.max(be1[:, :, :2], be2[:, :, :2])
-    #mask1 = (be1[:,:, 0] < be2[:,:, 0]) ^ (be1[:,:, 1] < be2[:,:, 1])
-    #mask1 = ~mask1
+    # mask1 = (be1[:,:, 0] < be2[:,:, 0]) ^ (be1[:,:, 1] < be2[:,:, 1])
+    # mask1 = ~mask1
     rb = torch.min(be1[:, :, 2:], be2[:, :, 2:])
-    #mask2 = (be1[:,:, 2] < be2[:,:, 2]) ^ (be1[:,:, 3] < be2[:,:, 3])
-    #mask2 = ~mask2
+    # mask2 = (be1[:,:, 2] < be2[:,:, 2]) ^ (be1[:,:, 3] < be2[:,:, 3])
+    # mask2 = ~mask2
 
     delta = rb - lt
     delta[delta < 0] = 0
-    intersect = delta[:, : ,0]*delta[:, : ,1]
-    #*mask1.float()*mask2.float()
+    intersect = delta[:, :, 0] * delta[:, :, 1]
+    # *mask1.float()*mask2.float()
 
     delta1 = be1[:, :, 2:] - be1[:, :, :2]
-    area1 = delta1[:, :, 0]*delta1[:, :, 1]
+    area1 = delta1[:, :, 0] * delta1[:, :, 1]
     delta2 = be2[:, :, 2:] - be2[:, :, :2]
-    area2 = delta2[:, :, 0]*delta2[:, :, 1]
+    area2 = delta2[:, :, 0] * delta2[:, :, 1]
 
-    iou = intersect/(area1 + area2 - intersect)
+    iou = intersect / (area1 + area2 - intersect)
     return iou
 
 
 # This function is from https://github.com/kuangliu/pytorch-ssd.
-class Encoder():
+class Encoder:
     """
-        Inspired by https://github.com/kuangliu/pytorch-src
-        Transform between (bboxes, lables) <-> SSD output
+    Inspired by https://github.com/kuangliu/pytorch-src
+    Transform between (bboxes, lables) <-> SSD output
 
-        dboxes: default boxes in size 8732 x 4,
-            encoder: input ltrb format, output xywh format
-            decoder: input xywh format, output ltrb format
+    dboxes: default boxes in size 8732 x 4,
+        encoder: input ltrb format, output xywh format
+        decoder: input xywh format, output ltrb format
 
-        encode:
-            input  : bboxes_in (Tensor nboxes x 4), labels_in (Tensor nboxes)
-            output : bboxes_out (Tensor 8732 x 4), labels_out (Tensor 8732)
-            criteria : IoU threshold of bboexes
+    encode:
+        input  : bboxes_in (Tensor nboxes x 4), labels_in (Tensor nboxes)
+        output : bboxes_out (Tensor 8732 x 4), labels_out (Tensor 8732)
+        criteria : IoU threshold of bboexes
 
-        decode:
-            input  : bboxes_in (Tensor 8732 x 4), scores_in (Tensor 8732 x nitems)
-            output : bboxes_out (Tensor nboxes x 4), labels_out (Tensor nboxes)
-            criteria : IoU threshold of bboexes
-            max_output : maximum number of output bboxes
+    decode:
+        input  : bboxes_in (Tensor 8732 x 4), scores_in (Tensor 8732 x nitems)
+        output : bboxes_out (Tensor nboxes x 4), labels_out (Tensor nboxes)
+        criteria : IoU threshold of bboexes
+        max_output : maximum number of output bboxes
     """
 
     def __init__(self, dboxes):
@@ -73,7 +73,7 @@ class Encoder():
         self.scale_xy = dboxes.scale_xy
         self.scale_wh = dboxes.scale_wh
 
-    def encode(self, bboxes_in, labels_in, criteria = 0.5):
+    def encode(self, bboxes_in, labels_in, criteria=0.5):
 
         ious = calc_iou_tensor(bboxes_in, self.dboxes)
         best_dbox_ious, best_dbox_idx = ious.max(dim=0)
@@ -92,10 +92,12 @@ class Encoder():
         bboxes_out = self.dboxes.clone()
         bboxes_out[masks, :] = bboxes_in[best_dbox_idx[masks], :]
         # Transform format to xywh format
-        x, y, w, h = 0.5*(bboxes_out[:, 0] + bboxes_out[:, 2]), \
-                     0.5*(bboxes_out[:, 1] + bboxes_out[:, 3]), \
-                     -bboxes_out[:, 0] + bboxes_out[:, 2], \
-                     -bboxes_out[:, 1] + bboxes_out[:, 3]
+        x, y, w, h = (
+            0.5 * (bboxes_out[:, 0] + bboxes_out[:, 2]),
+            0.5 * (bboxes_out[:, 1] + bboxes_out[:, 3]),
+            -bboxes_out[:, 0] + bboxes_out[:, 2],
+            -bboxes_out[:, 1] + bboxes_out[:, 3],
+        )
         bboxes_out[:, 0] = x
         bboxes_out[:, 1] = y
         bboxes_out[:, 2] = w
@@ -104,8 +106,8 @@ class Encoder():
 
     def scale_back_batch(self, bboxes_in, scores_in):
         """
-            Do scale and transform from xywh to ltrb
-            suppose input Nx4xnum_bbox Nxlabel_numxnum_bbox
+        Do scale and transform from xywh to ltrb
+        suppose input Nx4xnum_bbox Nxlabel_numxnum_bbox
         """
         if bboxes_in.device == torch.device("cpu"):
             self.dboxes = self.dboxes.cpu()
@@ -117,17 +119,19 @@ class Encoder():
         bboxes_in = bboxes_in.permute(0, 2, 1)
         scores_in = scores_in.permute(0, 2, 1)
 
-        bboxes_in[:, :, :2] = self.scale_xy*bboxes_in[:, :, :2]
-        bboxes_in[:, :, 2:] = self.scale_wh*bboxes_in[:, :, 2:]
+        bboxes_in[:, :, :2] = self.scale_xy * bboxes_in[:, :, :2]
+        bboxes_in[:, :, 2:] = self.scale_wh * bboxes_in[:, :, 2:]
 
-        bboxes_in[:, :, :2] = bboxes_in[:, :, :2]*self.dboxes_xywh[:, :, 2:] + self.dboxes_xywh[:, :, :2]
-        bboxes_in[:, :, 2:] = bboxes_in[:, :, 2:].exp()*self.dboxes_xywh[:, :, 2:]
+        bboxes_in[:, :, :2] = bboxes_in[:, :, :2] * self.dboxes_xywh[:, :, 2:] + self.dboxes_xywh[:, :, :2]
+        bboxes_in[:, :, 2:] = bboxes_in[:, :, 2:].exp() * self.dboxes_xywh[:, :, 2:]
 
         # Transform format to ltrb
-        l, t, r, b = bboxes_in[:, :, 0] - 0.5*bboxes_in[:, :, 2],\
-                     bboxes_in[:, :, 1] - 0.5*bboxes_in[:, :, 3],\
-                     bboxes_in[:, :, 0] + 0.5*bboxes_in[:, :, 2],\
-                     bboxes_in[:, :, 1] + 0.5*bboxes_in[:, :, 3]
+        l, t, r, b = (
+            bboxes_in[:, :, 0] - 0.5 * bboxes_in[:, :, 2],
+            bboxes_in[:, :, 1] - 0.5 * bboxes_in[:, :, 3],
+            bboxes_in[:, :, 0] + 0.5 * bboxes_in[:, :, 2],
+            bboxes_in[:, :, 1] + 0.5 * bboxes_in[:, :, 3],
+        )
 
         bboxes_in[:, :, 0] = l
         bboxes_in[:, :, 1] = t
@@ -136,7 +140,7 @@ class Encoder():
 
         return bboxes_in, F.softmax(scores_in, dim=-1)
 
-    def decode_batch(self, bboxes_in, scores_in,  criteria = 0.45, max_output=200):
+    def decode_batch(self, bboxes_in, scores_in, criteria=0.45, max_output=200):
         bboxes, probs = self.scale_back_batch(bboxes_in, scores_in)
 
         output = []
@@ -157,21 +161,23 @@ class Encoder():
         for i, score in enumerate(scores_in.split(1, 1)):
             # skip background
             # print(score[score>0.90])
-            if i == 0: continue
+            if i == 0:
+                continue
             # print(i)
 
             score = score.squeeze(1)
             mask = score > 0.05
 
             bboxes, score = bboxes_in[mask, :], score[mask]
-            if score.size(0) == 0: continue
+            if score.size(0) == 0:
+                continue
 
             score_sorted, score_idx_sorted = score.sort(dim=0)
 
             # select max_output indices
             score_idx_sorted = score_idx_sorted[-max_num:]
             candidates = []
-            #maxdata, maxloc = scores_in.sort()
+            # maxdata, maxloc = scores_in.sort()
 
             while score_idx_sorted.numel() > 0:
                 idx = score_idx_sorted[-1].item()
@@ -184,21 +190,21 @@ class Encoder():
 
             bboxes_out.append(bboxes[candidates, :])
             scores_out.append(score[candidates])
-            labels_out.extend([i]*len(candidates))
+            labels_out.extend([i] * len(candidates))
 
-        bboxes_out, labels_out, scores_out = torch.cat(bboxes_out, dim=0), \
-               torch.tensor(labels_out, dtype=torch.long), \
-               torch.cat(scores_out, dim=0)
-
+        bboxes_out, labels_out, scores_out = (
+            torch.cat(bboxes_out, dim=0),
+            torch.tensor(labels_out, dtype=torch.long),
+            torch.cat(scores_out, dim=0),
+        )
 
         _, max_ids = scores_out.sort(dim=0)
         max_ids = max_ids[-max_output:]
         return bboxes_out[max_ids, :], labels_out[max_ids], scores_out[max_ids]
 
 
-class DefaultBoxes():
-    def __init__(self, fig_size, feat_size, steps, scales, aspect_ratios, \
-                       scale_xy=0.1, scale_wh=0.2):
+class DefaultBoxes:
+    def __init__(self, fig_size, feat_size, steps, scales, aspect_ratios, scale_xy=0.1, scale_wh=0.2):
 
         self.feat_size = feat_size
         self.fig_size = fig_size
@@ -211,25 +217,25 @@ class DefaultBoxes():
         self.steps = steps
         self.scales = scales
 
-        fk = fig_size/np.array(steps)
+        fk = fig_size / np.array(steps)
         self.aspect_ratios = aspect_ratios
 
         self.default_boxes = []
         # size of feature and number of feature
         for idx, sfeat in enumerate(self.feat_size):
 
-            sk1 = scales[idx]/fig_size
-            sk2 = scales[idx+1]/fig_size
-            sk3 = sqrt(sk1*sk2)
+            sk1 = scales[idx] / fig_size
+            sk2 = scales[idx + 1] / fig_size
+            sk3 = sqrt(sk1 * sk2)
             all_sizes = [(sk1, sk1), (sk3, sk3)]
 
             for alpha in aspect_ratios[idx]:
-                w, h = sk1*sqrt(alpha), sk1/sqrt(alpha)
+                w, h = sk1 * sqrt(alpha), sk1 / sqrt(alpha)
                 all_sizes.append((w, h))
                 all_sizes.append((h, w))
             for w, h in all_sizes:
                 for i, j in itertools.product(range(sfeat), repeat=2):
-                    cx, cy = (j+0.5)/fk[idx], (i+0.5)/fk[idx]
+                    cx, cy = (j + 0.5) / fk[idx], (i + 0.5) / fk[idx]
                     self.default_boxes.append((cx, cy, w, h))
 
         self.dboxes = torch.tensor(self.default_boxes)
@@ -250,8 +256,10 @@ class DefaultBoxes():
         return self.scale_wh_
 
     def __call__(self, order="ltrb"):
-        if order == "ltrb": return self.dboxes_ltrb
-        if order == "xywh": return self.dboxes
+        if order == "ltrb":
+            return self.dboxes_ltrb
+        if order == "xywh":
+            return self.dboxes
 
 
 def dboxes300_coco():

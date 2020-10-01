@@ -1,5 +1,4 @@
 import random
-from time import sleep
 
 import numpy as np
 import torch
@@ -16,7 +15,7 @@ def fix_seeds(seed):
 
 
 def resnet_freeze(model, trainable_layers: int) -> None:
-    layers_to_train = ['layer4', 'layer3', 'layer2', 'layer1', 'conv1'][:trainable_layers]
+    layers_to_train = ["layer4", "layer3", "layer2", "layer1", "conv1"][:trainable_layers]
     for name, param in model.named_parameters():
         if all([not name.startswith(layer) for layer in layers_to_train]):
             param.requires_grad_(False)
